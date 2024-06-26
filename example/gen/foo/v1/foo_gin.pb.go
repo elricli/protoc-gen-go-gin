@@ -4,7 +4,7 @@
 // - protoc            (unknown)
 // source: foo/v1/foo.proto
 
-package gen
+package v1
 
 import (
 	http "net/http"
