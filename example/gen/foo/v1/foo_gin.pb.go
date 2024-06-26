@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-gin v1.0.0
 // - protoc            (unknown)
-// source: test.proto
+// source: foo/v1/foo.proto
 
-package main
+package gen
 
 import (
 	http "net/http"
@@ -19,7 +19,7 @@ type FooServiceResponseHandler ServiceResponseHandler
 // FooService is a service that returns a FooResponse.
 type FooService interface {
 	// GetFoo returns a FooResponse.
-	GetFoo(context.Context, *FooRequest) (*FooResponse, error)
+	GetFoo(context.Context, *GetFooRequest) (*GetFooResponse, error)
 }
 
 func RegisterFooService(eng *gin.Engine, svr FooService, rh FooServiceResponseHandler) {
@@ -28,7 +28,7 @@ func RegisterFooService(eng *gin.Engine, svr FooService, rh FooServiceResponseHa
 
 func initFooServiceRouter(eng *gin.Engine, svr FooService, rh FooServiceResponseHandler) {
 	eng.GET("/api/v1/foo", func(ctx *gin.Context) {
-		in := &FooRequest{}
+		in := &GetFooRequest{}
 		if err := ctx.Bind(in); err != nil {
 			rh(ctx.Writer, nil, err)
 			return

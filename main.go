@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-	// fmt.Println("Hello, World!")
 	protogen.Options{}.Run(func(p *protogen.Plugin) error {
 		// p.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_SUPPORTS_EDITIONS | pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 		// p.SupportedEditionsMinimum = descriptorpb.Edition_EDITION_2024
