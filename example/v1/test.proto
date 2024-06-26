@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package example.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = ".;main";
+
+// FooService is a service that returns a FooResponse.
+service FooService {
+  // GetFoo returns a FooResponse.
+  rpc GetFoo(GetFooRequest) returns (GetFooResponse) {
+    option (google.api.http) = {get: "/api/v1/foo"};
+  }
+}
+
+// GetFooRequest is a request to get a FooResponse.
+message GetFooRequest {
+  string foo = 1;
+}
+
+message GetFooResponse {
+  string foo = 1;
+}

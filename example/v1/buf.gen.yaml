@@ -1,0 +1,13 @@
+version: v2
+managed:
+  enabled: true
+  disable:
+    # Don't modify any files in buf.build/googleapis/googleapis
+    - module: buf.build/googleapis/googleapis
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: gen
+    opt: paths=source_relative
+  - local: ["go", "run", "../"] # protoc-gen-go-gin
+    out: gen
+    opt: paths=source_relative
