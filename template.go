@@ -42,6 +42,9 @@ type {{ .Name }}ResponseHandler ServiceResponseHandler
 }
 
 func Register{{ .Name }}(eng *gin.Engine, svr {{ .Name }}, rh {{ .Name }}ResponseHandler) {
+	if rh == nil {
+		panic("response handler is nil")
+	}
 	init{{ .Name }}Router(eng, svr, rh)
 }
 
@@ -49,10 +52,17 @@ func init{{ .Name }}Router(eng *gin.Engine, svr {{ .Name }}, rh {{ .Name }}Respo
 {{- range .Methods }}
 	eng.{{ .HTTPRule.Method }}("{{ .HTTPRule.Path }}", func(ctx *gin.Context) {
 		in := &{{ .Input }}{}
-		if err := ctx.Bind(in); err != nil {
+		{{- if .HTTPRule.HasBody }}
+		if err := ctx.ShouldBind(in{{ .HTTPRule.Body }}); err != nil {
 			rh(ctx.Writer, nil, err)
 			return
 		}
+		{{- else }}
+		if err := decoder.Decode(in, ctx.Request.URL.Query()); err != nil {
+			rh(ctx.Writer, nil, err)
+			return
+		}
+		{{- end }}
 		out, err := svr.{{ .Name }}(ctx, in)
 		if err != nil {
 			rh(ctx.Writer, nil, err)

@@ -42,8 +42,14 @@ func main() {
 			gf.P("import (")
 			gf.P(`	http "net/http"`)
 			gf.P(`	context "context"`)
+			gf.P()
 			gf.P(`	gin "github.com/gin-gonic/gin"`)
+			gf.P(`	schema "github.com/gorilla/schema"`)
 			gf.P(")")
+			gf.P()
+			gf.P(`var (`)
+			gf.P(`	decoder = schema.NewDecoder()`)
+			gf.P(`)`)
 
 			var tc TemplateContext
 			for _, s := range f.Services {
@@ -86,7 +92,6 @@ func buildServics(tc *TemplateContext, s *protogen.Service) {
 			Output:  m.Output.GoIdent.GoName,
 			Comment: m.Comments.Leading.String(),
 			HTTPRule: HTTPRule{
-				HasBody:      rule.GetBody() != "" || rule.GetBody() != "*",
 				ResponseBody: m.Output.GoIdent.GoName,
 			},
 		}
@@ -97,15 +102,27 @@ func buildServics(tc *TemplateContext, s *protogen.Service) {
 		case *annotations.HttpRule_Post:
 			meth.HTTPRule.Path = pattern.Post
 			meth.HTTPRule.Method = "POST"
+			meth.HTTPRule.HasBody = true
+			if rule.GetBody() == "" {
+				fmt.Fprintf(os.Stderr, "service %s method %s has no body\n", s.GoName, m.GoName)
+			}
 		case *annotations.HttpRule_Put:
 			meth.HTTPRule.Path = pattern.Put
 			meth.HTTPRule.Method = "PUT"
+			meth.HTTPRule.HasBody = true
+			if rule.GetBody() == "" {
+				fmt.Fprintf(os.Stderr, "service %s method %s has no body\n", s.GoName, m.GoName)
+			}
 		case *annotations.HttpRule_Delete:
 			meth.HTTPRule.Path = pattern.Delete
 			meth.HTTPRule.Method = "DELETE"
 		case *annotations.HttpRule_Patch:
 			meth.HTTPRule.Path = pattern.Patch
 			meth.HTTPRule.Method = "PATCH"
+			meth.HTTPRule.HasBody = true
+			if rule.GetBody() == "" {
+				fmt.Fprintf(os.Stderr, "service %s method %s has no body\n", s.GoName, m.GoName)
+			}
 		case *annotations.HttpRule_Custom:
 			meth.HTTPRule.Path = pattern.Custom.Path
 			meth.HTTPRule.Method = pattern.Custom.Kind

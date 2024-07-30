@@ -12,6 +12,13 @@ service FooService {
   rpc GetFoo(GetFooRequest) returns (GetFooResponse) {
     option (google.api.http) = {get: "/api/v1/foo"};
   }
+  // SaveFoo returns a FooResponse.
+  rpc SaveFoo(SaveFooRequest) returns (SaveFooResponse) {
+    option (google.api.http) = {
+      body: "*"
+      post: "/api/v1/foo"
+    };
+  }
 }
 
 // GetFooRequest is a request to get a FooResponse.
@@ -20,5 +27,13 @@ message GetFooRequest {
 }
 
 message GetFooResponse {
+  string foo = 1;
+}
+
+message SaveFooRequest {
+  string foo = 1;
+}
+
+message SaveFooResponse {
   string foo = 1;
 }
