@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"text/template"
@@ -27,7 +28,7 @@ func main() {
 				}
 			}
 			if !hhr {
-				fmt.Fprintf(os.Stderr, "file %s has no http rules\n", f.Desc.Path())
+				fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: file %s has no http rules\n", f.Desc.Path())
 				return nil
 			}
 			gf := p.NewGeneratedFile(f.GeneratedFilenamePrefix+"_gin.pb.go", f.GoImportPath)
@@ -95,33 +96,43 @@ func buildServics(tc *TemplateContext, s *protogen.Service) {
 		case *annotations.HttpRule_Post:
 			meth.HTTPRule.Path = pattern.Post
 			meth.HTTPRule.Method = "POST"
-			meth.HTTPRule.HasBody = true
-			if rule.GetBody() == "" {
-				fmt.Fprintf(os.Stderr, "service %s method %s has no body\n", s.GoName, m.GoName)
-			}
 		case *annotations.HttpRule_Put:
 			meth.HTTPRule.Path = pattern.Put
 			meth.HTTPRule.Method = "PUT"
-			meth.HTTPRule.HasBody = true
-			if rule.GetBody() == "" {
-				fmt.Fprintf(os.Stderr, "service %s method %s has no body\n", s.GoName, m.GoName)
-			}
 		case *annotations.HttpRule_Delete:
 			meth.HTTPRule.Path = pattern.Delete
 			meth.HTTPRule.Method = "DELETE"
 		case *annotations.HttpRule_Patch:
 			meth.HTTPRule.Path = pattern.Patch
 			meth.HTTPRule.Method = "PATCH"
-			meth.HTTPRule.HasBody = true
-			if rule.GetBody() == "" {
-				fmt.Fprintf(os.Stderr, "service %s method %s has no body\n", s.GoName, m.GoName)
-			}
 		case *annotations.HttpRule_Custom:
 			meth.HTTPRule.Path = pattern.Custom.Path
 			meth.HTTPRule.Method = pattern.Custom.Kind
 		}
-		if rule.Body != "" && rule.Body != "*" {
+		if strings.HasSuffix(meth.HTTPRule.Path, "/") {
+			fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m: %s: %s has trailing slash\n", meth.HTTPRule.Method, meth.HTTPRule.Path)
+		}
+		if strings.Contains(meth.HTTPRule.Path, "{") {
+			fmt.Fprintf(os.Stderr, "\u001B[31mERROR\u001B[m: %s: %s has {var} pattern, z\n", meth.HTTPRule.Method, meth.HTTPRule.Path)
+			os.Exit(1)
+		}
+		if meth.HTTPRule.Method == http.MethodGet || meth.HTTPRule.Method == http.MethodDelete {
+			if rule.Body != "" {
+				fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m:WARN: %s: %s has body should be empty\n", meth.HTTPRule.Method, meth.HTTPRule.Path)
+			}
+		} else {
+			if rule.Body == "" {
+				fmt.Fprintf(os.Stderr, "\u001B[31mWARN\u001B[m:%s: %s has body should not be empty\n", meth.HTTPRule.Method, meth.HTTPRule.Path)
+			}
+		}
+		if rule.Body == "*" {
+			meth.HTTPRule.Body = ""
+			meth.HTTPRule.HasBody = true
+		} else if rule.Body != "" {
 			meth.HTTPRule.Body = "." + camelCaseVars(rule.Body)
+			meth.HTTPRule.HasBody = true
+		} else {
+			meth.HTTPRule.HasBody = false
 		}
 		svc.Methods = append(svc.Methods, meth)
 	}
