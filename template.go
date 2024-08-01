@@ -29,11 +29,39 @@ type HTTPRule struct {
 }
 
 const tmpl = `
-type ServiceResponseHandler func(resp http.ResponseWriter, reply any, err error)
+var (
+	DefaultResponseEncoder = func(ctx *gin.Context, reply any) {
+		switch ctx.ContentType() {
+		case "application/xml":
+			ctx.XML(http.StatusOK, reply)
+		case "application/yaml":
+			ctx.YAML(http.StatusOK, reply)
+		case "application/x-protobuf":
+			ctx.ProtoBuf(http.StatusOK, reply)
+		case "application/toml":
+			ctx.TOML(http.StatusOK, reply)
+		default:
+			ctx.JSON(http.StatusOK, reply)
+		}
+	}
+	DefaultErrorEncoder = func(ctx *gin.Context, err error) {
+		resp := gin.H{"error": err.Error()}
+		switch ctx.ContentType() {
+		case "application/xml":
+			ctx.XML(http.StatusInternalServerError, resp)
+		case "application/yaml":
+			ctx.YAML(http.StatusInternalServerError, resp)
+		case "application/x-protobuf":
+			ctx.ProtoBuf(http.StatusInternalServerError, resp)
+		case "application/toml":
+			ctx.TOML(http.StatusInternalServerError, resp)
+		default:
+			ctx.JSON(http.StatusInternalServerError, resp)
+		}
+	}
+)
 
 {{- range .Services }}
-
-type {{ .Name }}ResponseHandler ServiceResponseHandler
 
 {{ .Comment }}type {{ .Name }} interface {
 {{- range .Methods }}
@@ -41,34 +69,31 @@ type {{ .Name }}ResponseHandler ServiceResponseHandler
 {{- end }}
 }
 
-func Register{{ .Name }}(eng *gin.Engine, svr {{ .Name }}, rh {{ .Name }}ResponseHandler) {
-	if rh == nil {
-		panic("response handler is nil")
-	}
-	init{{ .Name }}Router(eng, svr, rh)
+func Register{{ .Name }}(eng *gin.Engine, svr {{ .Name }}) {
+	init{{ .Name }}Router(eng, svr)
 }
 
-func init{{ .Name }}Router(eng *gin.Engine, svr {{ .Name }}, rh {{ .Name }}ResponseHandler) {
+func init{{ .Name }}Router(eng *gin.Engine, svr {{ .Name }}) {
 {{- range .Methods }}
 	eng.{{ .HTTPRule.Method }}("{{ .HTTPRule.Path }}", func(ctx *gin.Context) {
 		in := &{{ .Input }}{}
 		{{- if .HTTPRule.HasBody }}
 		if err := ctx.ShouldBind(in{{ .HTTPRule.Body }}); err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
 		{{- else }}
 		if err := decoder.Decode(in, ctx.Request.URL.Query()); err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
 		{{- end }}
 		out, err := svr.{{ .Name }}(ctx, in)
 		if err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
-		rh(ctx.Writer, out, nil)
+		DefaultResponseEncoder(ctx, out)
 	})
 {{- end }}
 }

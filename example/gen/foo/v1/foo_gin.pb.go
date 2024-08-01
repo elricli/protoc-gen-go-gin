@@ -18,9 +18,37 @@ var _ = context.TODO
 var _ = gin.ContextKey
 var decoder = schema.NewDecoder()
 
-type ServiceResponseHandler func(resp http.ResponseWriter, reply any, err error)
-
-type FooServiceResponseHandler ServiceResponseHandler
+var (
+	DefaultResponseEncoder = func(ctx *gin.Context, reply any) {
+		switch ctx.ContentType() {
+		case "application/xml":
+			ctx.XML(http.StatusOK, reply)
+		case "application/yaml":
+			ctx.YAML(http.StatusOK, reply)
+		case "application/x-protobuf":
+			ctx.ProtoBuf(http.StatusOK, reply)
+		case "application/toml":
+			ctx.TOML(http.StatusOK, reply)
+		default:
+			ctx.JSON(http.StatusOK, reply)
+		}
+	}
+	DefaultErrorEncoder = func(ctx *gin.Context, err error) {
+		resp := gin.H{"error": err.Error()}
+		switch ctx.ContentType() {
+		case "application/xml":
+			ctx.XML(http.StatusInternalServerError, resp)
+		case "application/yaml":
+			ctx.YAML(http.StatusInternalServerError, resp)
+		case "application/x-protobuf":
+			ctx.ProtoBuf(http.StatusInternalServerError, resp)
+		case "application/toml":
+			ctx.TOML(http.StatusInternalServerError, resp)
+		default:
+			ctx.JSON(http.StatusInternalServerError, resp)
+		}
+	}
+)
 
 // FooService is a service that returns a FooResponse.
 type FooService interface {
@@ -30,38 +58,35 @@ type FooService interface {
 	SaveFoo(context.Context, *SaveFooRequest) (*SaveFooResponse, error)
 }
 
-func RegisterFooService(eng *gin.Engine, svr FooService, rh FooServiceResponseHandler) {
-	if rh == nil {
-		panic("response handler is nil")
-	}
-	initFooServiceRouter(eng, svr, rh)
+func RegisterFooService(eng *gin.Engine, svr FooService) {
+	initFooServiceRouter(eng, svr)
 }
 
-func initFooServiceRouter(eng *gin.Engine, svr FooService, rh FooServiceResponseHandler) {
+func initFooServiceRouter(eng *gin.Engine, svr FooService) {
 	eng.GET("/api/v1/foo", func(ctx *gin.Context) {
 		in := &GetFooRequest{}
 		if err := decoder.Decode(in, ctx.Request.URL.Query()); err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
 		out, err := svr.GetFoo(ctx, in)
 		if err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
-		rh(ctx.Writer, out, nil)
+		DefaultResponseEncoder(ctx, out)
 	})
 	eng.POST("/api/v1/foo", func(ctx *gin.Context) {
 		in := &SaveFooRequest{}
 		if err := ctx.ShouldBind(in); err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
 		out, err := svr.SaveFoo(ctx, in)
 		if err != nil {
-			rh(ctx.Writer, nil, err)
+			DefaultErrorEncoder(ctx, err)
 			return
 		}
-		rh(ctx.Writer, out, nil)
+		DefaultResponseEncoder(ctx, out)
 	})
 }
