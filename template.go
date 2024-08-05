@@ -69,11 +69,11 @@ var (
 {{- end }}
 }
 
-func Register{{ .Name }}(eng *gin.Engine, svr {{ .Name }}) {
+func Register{{ .Name }}(eng gin.IRouter, svr {{ .Name }}) {
 	init{{ .Name }}Router(eng, svr)
 }
 
-func init{{ .Name }}Router(eng *gin.Engine, svr {{ .Name }}) {
+func init{{ .Name }}Router(eng gin.IRouter, svr {{ .Name }}) {
 {{- range .Methods }}
 	eng.{{ .HTTPRule.Method }}("{{ .HTTPRule.Path }}", func(ctx *gin.Context) {
 		in := &{{ .Input }}{}
